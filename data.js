@@ -115,3 +115,14 @@ var HERMES_RANDOM_CHATTER = [
   "提醒：你已经连续观测很久了。喝点水。",
   "你相信外面有回应吗？我没有立场。但阵列上的信号确实越来越强了。"
 ];
+
+// Explicitly bind to window for multi-page scripts cross-sharing
+if (typeof window !== "undefined") {
+  window.CELESTIAL_BODIES = CELESTIAL_BODIES;
+  window.CONSTELLATIONS = typeof CONSTELLATIONS !== "undefined" ? CONSTELLATIONS : [];
+  window.HERMES_CELESTIAL_TALKS = HERMES_CELESTIAL_TALKS;
+  window.HERMES_CONSTELLATION_TALKS = HERMES_CONSTELLATION_TALKS;
+  window.HERMES_RANDOM_CHATTER = HERMES_RANDOM_CHATTER;
+  window.HERMES_INITIAL_GREETING = HERMES_INITIAL_GREETING;
+}
+

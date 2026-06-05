@@ -16,6 +16,12 @@ var state = {
   printerText: "",
   activeConstellation: null,
   notebookOpen: false,
+  catalogOpen: false,
+  catalogSelectedId: null,
+  catalogFilter: 'all',
+  hermesTalkCount: 0,
+  reportExported: false,
+  musicPlaying: false,
   systemLogs: [],
   trails: [],
   ripples: [],
@@ -119,6 +125,10 @@ function getThresholdHint(unlockedCount) {
 function queueHermesMessage(text, emotion) {
   var msgId = Date.now() + '-' + Math.random();
   state.messageQueue.push({ id: msgId, text: text, emotion: emotion || '' });
+  state.hermesTalkCount = (state.hermesTalkCount || 0) + 1;
+  if (typeof checkMissions === 'function') {
+    checkMissions();
+  }
   processMessageQueue();
 }
 
@@ -162,6 +172,11 @@ function updateDataDisplay() {
   if (dataNum && state.totalData > 0 && state.totalData % 5 < 1) {
     dataNum.classList.add('flash');
     setTimeout(function () { dataNum.classList.remove('flash'); }, 300);
+  }
+  
+  // 校验任务达成
+  if (typeof checkMissions === 'function') {
+    checkMissions();
   }
 }
 
@@ -741,6 +756,9 @@ function setupKnobDrag() {
 
     var valEl = document.getElementById('knob-value');
     if (valEl) valEl.textContent = 'VAL: ' + Math.round(state.knobAngle) + '°';
+    if (typeof checkMissions === 'function') {
+      checkMissions();
+    }
   });
 
   document.addEventListener('mouseup', function () {
@@ -838,7 +856,9 @@ function saveProgress() {
       totalData: state.totalData,
       dataPerSecond: state.dataPerSecond,
       unlockedConstellations: state.unlockedConstellations,
-      autoCollectOn: state.autoCollectOn
+      autoCollectOn: state.autoCollectOn,
+      hermesTalkCount: state.hermesTalkCount || 0,
+      reportExported: state.reportExported || false
     };
     localStorage.setItem('dsos_save', JSON.stringify(data));
   } catch (e) { /* ignore */ }
@@ -853,6 +873,8 @@ function loadProgress() {
     if (data.totalData !== undefined) state.totalData = data.totalData;
     if (data.dataPerSecond !== undefined) state.dataPerSecond = data.dataPerSecond;
     if (data.unlockedConstellations) state.unlockedConstellations = data.unlockedConstellations;
+    if (data.hermesTalkCount !== undefined) state.hermesTalkCount = data.hermesTalkCount;
+    if (data.reportExported !== undefined) state.reportExported = data.reportExported;
     // 恢复自动采集状态
     if (data.autoCollectOn !== undefined) {
       state.autoCollectOn = data.autoCollectOn;
@@ -922,6 +944,13 @@ function setupExportButton() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    // 触发任务完成
+    state.reportExported = true;
+    saveProgress();
+    if (typeof checkMissions === 'function') {
+      checkMissions();
+    }
   });
 }
 
@@ -943,7 +972,6 @@ function setupMusicPlayer() {
     { name: 'Blues with you',          file: 'src/music/▶_Blues_with_you.m4a' },
     { name: '群星见我',                 file: 'src/music/▶_群星见我.m4a' },
     { name: '绿意游曳',                 file: 'src/music/▶_绿意游曳.m4a' },
-    { name: 'Ad astra',                file: 'src/music/▶_Ad_astra.m4a' },
     { name: "Control's Wishes",        file: "src/music/▶_Control's_Wishes.m4a" },
     { name: 'The Coming of the Future',file: 'src/music/▶_The_Coming_of_the_Future.m4a' },
     { name: 'A World Above',           file: 'src/music/▶_A_World_Above.m4a' }
@@ -986,15 +1014,21 @@ function setupMusicPlayer() {
 
   function playTrack() {
     isPlaying = true;
+    state.musicPlaying = true;
+    if (typeof checkMissions === 'function') checkMissions();
     icon.textContent = '[ ⏹ ]';
     audio.play().catch(function (e) {
       isPlaying = false;
+      state.musicPlaying = false;
+      if (typeof checkMissions === 'function') checkMissions();
       icon.textContent = '[ ▶ ]';
     });
   }
 
   function stopTrack() {
     isPlaying = false;
+    state.musicPlaying = false;
+    if (typeof checkMissions === 'function') checkMissions();
     icon.textContent = '[ ▶ ]';
     audio.pause();
   }
@@ -1127,6 +1161,99 @@ function renderTrails() {
     dot.className = 'trail-dot';
     dot.style.cssText = 'left:' + t.x + 'px; top:' + t.y + 'px;';
     section.appendChild(dot);
+  }
+}
+
+/* ============================================
+   图鉴 & 任务状态处理系统
+   ============================================ */
+
+function getBodyCategory(body) {
+  var t = body.type || '';
+  if (t.indexOf('行星') !== -1) {
+    return 'planet';
+  } else if (t.indexOf('星云') !== -1 || t.indexOf('遗迹') !== -1 || t.indexOf('气体柱') !== -1) {
+    return 'nebula';
+  } else if (t.indexOf('黑洞') !== -1 || t.indexOf('中心') !== -1 || t.indexOf('空间') !== -1 || t.indexOf('中子星') !== -1 || t.indexOf('矮星') !== -1) {
+    return 'extreme';
+  } else {
+    return 'star';
+  }
+}
+
+function checkMissions() {
+  var completedCount = 0;
+  var missionList = [
+    {
+      id: "export",
+      title: "观测报告导出测试 (OBSERVATION LOG EXPORT)",
+      desc: "点击右侧控制面板底部的 📄 导出观测报告 按钮，生成并导出一次本地观测文本报告",
+      isMet: function() { return !!state.reportExported; }
+    },
+    {
+      id: "auto",
+      title: "建立自动收编 (AUTO FEED ESTABLISHED)",
+      desc: "在右侧控制面板将自动采集馈送 (AUTO FEED) 的拨动开关切换至 ON",
+      isMet: function() { return !!state.autoCollectOn; }
+    },
+    {
+      id: "music",
+      title: "星隙音频测试 (RESONANCE AUDIO TEST)",
+      desc: "点击底部星图音乐控制台播放任意一首深空波段音频",
+      isMet: function() { return !!state.musicPlaying; }
+    },
+    {
+      id: "hermes",
+      title: "启动常态通讯 (HERMES TELEMETRY TALK)",
+      desc: "点击右下方赫尔墨斯全息头像，执行一次波形会话",
+      isMet: function() { return (state.hermesTalkCount || 0) >= 1; }
+    },
+    {
+      id: "discover_one",
+      title: "深空断点解锁 (FIRST CELESTIAL SOURCE)",
+      desc: "波段数据量积累达到目标，成功锁定并解锁任一未知天体",
+      isMet: function() { return state.unlockedIds.length >= 1; }
+    },
+    {
+      id: "constellation",
+      title: "首个星群复原 (CONSTELLATION SIGNAL)",
+      desc: "收集足够多的天体，成功发现复原一个太阳系星座连线 (如北斗七星或猎户座等)",
+      isMet: function() { return state.unlockedConstellations.length >= 1; }
+    },
+    {
+      id: "total_data",
+      title: "累积遥测带宽 (TELEMETRY ACCUMULATION)",
+      desc: "全阵列累计采样本季遥测无线电数据达到 200 KB 以上",
+      isMet: function() { return state.totalData >= 200; }
+    }
+  ];
+
+  var html = '';
+  for (var i = 0; i < missionList.length; i++) {
+    var m = missionList[i];
+    var done = m.isMet();
+    if (done) completedCount++;
+
+    var checkedClass = done ? 'checked' : '';
+    var indicator = done ? '✓' : ' ';
+    html += 
+      '<div class="mission-item ' + checkedClass + '">' +
+      '  <div class="mission-checkbox">' + indicator + '</div>' +
+      '  <div class="mission-info">' +
+      '    <div class="mission-title">' + m.title + '</div>' +
+      '    <div class="mission-desc">' + m.desc + '</div>' +
+      '  </div>' +
+      '</div>';
+  }
+
+  var container = document.getElementById('mission-list-container');
+  if (container) {
+    container.innerHTML = html;
+  }
+
+  var badge = document.getElementById('mission-completed-badge');
+  if (badge) {
+    badge.textContent = completedCount + ' / ' + missionList.length;
   }
 }
 
@@ -1279,7 +1406,7 @@ function runIntroLoader() {
     // 恢复自动采集开关状态（必须在主界面显示后）
     updateAutoCollectUI();
     state.loaderDone = true;
-    queueHermesMessage(HERMES_INITIAL_GREETING, '耍帅');
+    queueHermesMessage(window.HERMES_INITIAL_GREETING || "你好，观测员。我是赫尔墨斯，特里蒙深空阵列的操作系统。阵列已校准完毕，信号接收器在线。当你准备好，点击主屏幕上的采集器就可以开始了。", '耍帅');
     startGameLoop();
     startAFKCheck();
     startRandomChatter();
@@ -1395,15 +1522,21 @@ function init() {
     });
   }
 
-  // 笔记本
+  // 笔记本与独立天体图鉴控制
   var notebookTab = document.getElementById('notebook-tab');
   var notebookClose = document.getElementById('notebook-close');
   var notebookBackdrop = document.getElementById('notebook-backdrop');
+
+  var catalogTab = document.getElementById('catalog-tab');
+
   if (notebookTab) {
     notebookTab.addEventListener('click', function () {
       state.notebookOpen = true;
       document.getElementById('notebook-modal').classList.remove('hidden');
+      notebookTab.classList.add('active');
+      if (catalogTab) catalogTab.classList.remove('active');
       playTelemetryBeep('click');
+      checkMissions();
     });
   }
   if (notebookClose) {
@@ -1412,6 +1545,19 @@ function init() {
   if (notebookBackdrop) {
     notebookBackdrop.addEventListener('click', closeNotebook);
   }
+
+  if (catalogTab) {
+    catalogTab.addEventListener('click', function (e) {
+      e.preventDefault();
+      playTelemetryBeep('click');
+      setTimeout(function() {
+        window.location.href = 'catalog.html';
+      }, 150);
+    });
+  }
+
+  // 初始化任务列表状态
+  checkMissions();
 
   // 星座弹窗关闭
   var constClose = document.getElementById('constellation-close');
