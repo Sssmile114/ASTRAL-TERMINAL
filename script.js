@@ -837,7 +837,8 @@ function saveProgress() {
       unlockedIds: state.unlockedIds,
       totalData: state.totalData,
       dataPerSecond: state.dataPerSecond,
-      unlockedConstellations: state.unlockedConstellations
+      unlockedConstellations: state.unlockedConstellations,
+      autoCollectOn: state.autoCollectOn
     };
     localStorage.setItem('dsos_save', JSON.stringify(data));
   } catch (e) { /* ignore */ }
@@ -852,7 +853,18 @@ function loadProgress() {
     if (data.totalData !== undefined) state.totalData = data.totalData;
     if (data.dataPerSecond !== undefined) state.dataPerSecond = data.dataPerSecond;
     if (data.unlockedConstellations) state.unlockedConstellations = data.unlockedConstellations;
+    // 恢复自动采集状态
+    if (data.autoCollectOn !== undefined) {
+      state.autoCollectOn = data.autoCollectOn;
+    }
+    // 确保 dataPerSecond 与已解锁数一致（修复旧存档可能的数值偏差）
+    state.dataPerSecond = Math.min(1.0, state.unlockedIds.length * 0.2);
   } catch (e) { /* ignore */ }
+}
+
+// 每10秒自动存档（放置游戏核心：刷新不丢数据）
+function startAutoSave() {
+  setInterval(saveProgress, 10000);
 }
 
 /* ---- 5k. 导出观测报告 ---- */
@@ -1264,6 +1276,8 @@ function runIntroLoader() {
     loader.classList.add('hidden');
     loader.style.display = 'none';
     document.getElementById('main-interface').classList.remove('hidden');
+    // 恢复自动采集开关状态（必须在主界面显示后）
+    updateAutoCollectUI();
     state.loaderDone = true;
     queueHermesMessage(HERMES_INITIAL_GREETING, '耍帅');
     startGameLoop();
@@ -1326,6 +1340,12 @@ function startRandomChatter() {
 function init() {
   // 读取 LocalStorage 存档
   loadProgress();
+  // 恢复数据面板显示
+  updateDataDisplay();
+  updateSystemLogs();
+
+  // 启动自动存档（每10秒）
+  startAutoSave();
 
   // 启动介绍动画
   runIntroLoader();
