@@ -112,8 +112,8 @@
 </head>
 <body>
   <div id="start-screen">
-    <img id="start-video-1" class="start-video" src="src/start/start1.gif" />
-    <img id="start-video-2" class="start-video start-video-2" src="src/start/start2.gif" />
+    <video id="start-video-1" class="start-video" playsinline muted></video>
+    <video id="start-video-2" class="start-video start-video-2" playsinline muted></video>
     <div class="start-overlay"></div>
     <audio id="start-bgm" src="src/music/▶_Ad_astra.m4a" loop preload="auto"></audio>
     <div class="start-content">
@@ -131,13 +131,14 @@
   <script>
     (function() {
       var screen = document.getElementById('start-screen');
-      var img2 = document.getElementById('start-video-2');
+      var video1 = document.getElementById('start-video-1');
+      var video2 = document.getElementById('start-video-2');
       var bgm = document.getElementById('start-bgm');
 
-      // Crossfade to start2.gif after start1.gif duration (~7s)
-      setTimeout(function() {
-        img2.classList.add('visible');
-      }, 7000);
+      // Play start1
+      video1.src = 'src/start/start1.mp4';
+      video1.load();
+      video1.play().catch(function() {});
 
       // 背景音乐：多种策略确保播放
       bgm.volume = 0.4;
@@ -158,6 +159,16 @@
           document.addEventListener('keydown', startBGM);
         });
       }
+
+      // start1 ends → crossfade to start2 loop
+      video1.addEventListener('ended', function onEnded() {
+        video1.removeEventListener('ended', onEnded);
+        video2.src = 'src/start/start2.mp4';
+        video2.loop = true;
+        video2.load();
+        video2.play().catch(function() {});
+        video2.classList.add('visible');
+      });
 
       // Click → fade out, navigate
       screen.addEventListener('click', function() {
