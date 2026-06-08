@@ -140,6 +140,11 @@
       video1.load();
       video1.play().catch(function() {});
 
+      // Preload start2 so it's ready when start1 ends
+      video2.src = 'src/start/start2.mp4';
+      video2.loop = true;
+      video2.load();
+
       // 背景音乐：多种策略确保播放
       bgm.volume = 0.4;
 
@@ -160,12 +165,9 @@
         });
       }
 
-      // start1 ends → crossfade to start2 loop
+      // start1 ends → seamless to start2 loop (already preloaded)
       video1.addEventListener('ended', function onEnded() {
         video1.removeEventListener('ended', onEnded);
-        video2.src = 'src/start/start2.mp4';
-        video2.loop = true;
-        video2.load();
         video2.play().catch(function() {});
         video2.classList.add('visible');
       });
