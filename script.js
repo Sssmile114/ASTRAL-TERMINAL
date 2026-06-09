@@ -1,7 +1,4 @@
-/* ============================================
-   深空数据观测站 · 主程序脚本
-   课程作业：纯 JavaScript + HTML + CSS
-   ============================================ */
+
 
 /* ========== 1. 全局状态 ========== */
 var state = {
@@ -819,6 +816,82 @@ function setupParallaxTracking() {
   });
 }
 
+/* ---- 5g. 宇宙鼠标跟随（光晕 + 粒子特效） ---- */
+function setupMouseFollow() {
+  // 创建光晕元素
+  var glow = document.createElement('div');
+  glow.className = 'mouse-glow';
+  glow.id = 'mouse-glow';
+  document.body.appendChild(glow);
+
+  var mouseX = -999, mouseY = -999;
+  var particlePool = [];
+  var MAX_PARTICLES = 30;
+
+  // 鼠标移动跟踪
+  document.addEventListener('mousemove', function (e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    glow.style.left = mouseX + 'px';
+    glow.style.top = mouseY + 'px';
+
+    // 概率产生粒子
+    if (Math.random() > 0.25) return;
+
+    var colors = ['#00ff88', '#FFBC29', '#E87439', '#60a5fa'];
+    var color = colors[Math.floor(Math.random() * colors.length)];
+    var size = 2 + Math.random() * 4;
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 20 + Math.random() * 60;
+    var lifetime = 600 + Math.random() * 900;
+
+    var p = document.createElement('div');
+    p.className = 'mouse-particle';
+    p.style.cssText =
+      'left:' + mouseX + 'px; top:' + mouseY + 'px; ' +
+      'width:' + size + 'px; height:' + size + 'px; ' +
+      'background:' + color + '; box-shadow: 0 0 ' + (size * 2) + 'px ' + color + '; ' +
+      'opacity:' + (0.5 + Math.random() * 0.5) + ';';
+    document.body.appendChild(p);
+    particlePool.push(p);
+
+    // 粒子飘散动画
+    var startTime = Date.now();
+    var dx = Math.cos(angle) * dist;
+    var dy = Math.sin(angle) * dist;
+
+    function animateParticle() {
+      var elapsed = Date.now() - startTime;
+      var progress = Math.min(elapsed / lifetime, 1);
+      if (progress >= 1 || !p.parentNode) {
+        if (p.parentNode) p.parentNode.removeChild(p);
+        var idx = particlePool.indexOf(p);
+        if (idx !== -1) particlePool.splice(idx, 1);
+        return;
+      }
+      var eased = 1 - Math.pow(1 - progress, 1.5);
+      p.style.transform = 'translate(' + (dx * eased) + 'px, ' + (dy * eased + Math.sin(elapsed * 0.003) * 8) + 'px)';
+      p.style.opacity = 0.5 * (1 - eased);
+      requestAnimationFrame(animateParticle);
+    }
+    requestAnimationFrame(animateParticle);
+
+    // 限制粒子总数
+    while (particlePool.length > MAX_PARTICLES) {
+      var old = particlePool.shift();
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+    }
+  });
+
+  // 鼠标离开窗口时隐藏光晕
+  document.addEventListener('mouseleave', function () {
+    glow.style.opacity = '0';
+  });
+  document.addEventListener('mouseenter', function () {
+    glow.style.opacity = '1';
+  });
+}
+
 /* ---- 5h. 彗星划过 ---- */
 function startShootingStars() {
   var container = document.getElementById('shooting-stars');
@@ -1490,6 +1563,7 @@ function init() {
   setupKnobDrag();
   setupStarMapDrag();
   setupParallaxTracking();
+  setupMouseFollow();
   setupBubbleClick();
   setupHermesAvatar();
   setupMouseTrail();

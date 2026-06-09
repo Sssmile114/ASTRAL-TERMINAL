@@ -337,7 +337,8 @@ window.addEventListener('DOMContentLoaded', function() {
   initializeFilters();
   startTickingClock();
   setupExitLink();
-  
+  setupMouseFollow();
+
   // Select first unlocked celestial coordinate on opening, if any exists
   var bodies = typeof CELESTIAL_BODIES !== 'undefined' ? CELESTIAL_BODIES : [];
   if (bodies.length > 0) {
@@ -352,3 +353,70 @@ window.addEventListener('DOMContentLoaded', function() {
     selectCelestialBody(firstSelectionId);
   }
 });
+
+/* ---- 鼠标跟随（与主页面一致） ---- */
+function setupMouseFollow() {
+  var glow = document.createElement('div');
+  glow.className = 'mouse-glow';
+  glow.id = 'mouse-glow';
+  document.body.appendChild(glow);
+
+  var particlePool = [];
+  var MAX_PARTICLES = 30;
+
+  document.addEventListener('mousemove', function (e) {
+    glow.style.left = e.clientX + 'px';
+    glow.style.top = e.clientY + 'px';
+
+    if (Math.random() > 0.25) return;
+
+    var colors = ['#00ff88', '#FFBC29', '#E87439', '#60a5fa'];
+    var color = colors[Math.floor(Math.random() * colors.length)];
+    var size = 2 + Math.random() * 4;
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 20 + Math.random() * 60;
+    var lifetime = 600 + Math.random() * 900;
+
+    var p = document.createElement('div');
+    p.className = 'mouse-particle';
+    p.style.cssText =
+      'left:' + e.clientX + 'px; top:' + e.clientY + 'px; ' +
+      'width:' + size + 'px; height:' + size + 'px; ' +
+      'background:' + color + '; box-shadow: 0 0 ' + (size * 2) + 'px ' + color + '; ' +
+      'opacity:' + (0.5 + Math.random() * 0.5) + ';';
+    document.body.appendChild(p);
+    particlePool.push(p);
+
+    var startTime = Date.now();
+    var dx = Math.cos(angle) * dist;
+    var dy = Math.sin(angle) * dist;
+
+    function animateParticle() {
+      var elapsed = Date.now() - startTime;
+      var progress = Math.min(elapsed / lifetime, 1);
+      if (progress >= 1 || !p.parentNode) {
+        if (p.parentNode) p.parentNode.removeChild(p);
+        var idx = particlePool.indexOf(p);
+        if (idx !== -1) particlePool.splice(idx, 1);
+        return;
+      }
+      var eased = 1 - Math.pow(1 - progress, 1.5);
+      p.style.transform = 'translate(' + (dx * eased) + 'px, ' + (dy * eased + Math.sin(elapsed * 0.003) * 8) + 'px)';
+      p.style.opacity = 0.5 * (1 - eased);
+      requestAnimationFrame(animateParticle);
+    }
+    requestAnimationFrame(animateParticle);
+
+    while (particlePool.length > MAX_PARTICLES) {
+      var old = particlePool.shift();
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+    }
+  });
+
+  document.addEventListener('mouseleave', function () {
+    glow.style.opacity = '0';
+  });
+  document.addEventListener('mouseenter', function () {
+    glow.style.opacity = '1';
+  });
+}

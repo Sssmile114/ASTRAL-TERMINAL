@@ -971,6 +971,30 @@ body::after {
   transition: transform 0.15s ease-out;
 }
 
+/* ---- 鼠标跟随：宇宙光晕 + 粒子 ---- */
+.mouse-glow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.06) 0%, rgba(232, 116, 57, 0.03) 40%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+  will-change: left, top;
+}
+
+.mouse-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 4px var(--green);
+  will-change: transform, opacity;
+}
+
 /* ---- 任务时钟 ---- */
 #mission-clock {
   color: rgba(255, 188, 41, 0.7);
