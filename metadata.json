@@ -1,8 +1,0 @@
-{
-  "name": "Remix: 深空数据观测站",
-  "description": "明日方舟《孤星》风格的深空数据观测物理操作台。采集宇宙信号、解锁未知天体与星座，在AI助手赫尔墨斯的协同下探索深邃星际。",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}
